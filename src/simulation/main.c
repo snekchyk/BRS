@@ -44,23 +44,21 @@ int main() {
         perror("Error opening file");
         return 1;
     }
-
-    double full_t = 2 * (v0 * sin(angle)/g);
     double v0x = v0 * cos(angle);
     double v0y = v0 * sin(angle);
+    double full_t = (v0y + sqrt(v0y * v0y + 2 * g * y0))/g;
     double t = 0.0;
 
     while (t <= full_t) {
         double Sx = get_Sx(v0x, t);
         double Sy = get_Sy(v0y, t);
 
-        printf("Sx: %lf, Sy: %lf, t: %lf\n", Sx, Sy, t);
-        fprintf(file, "%lf;%lf;%lf\n", Sx, Sy, t);
-        t += 0.1;
+        fprintf(file, "%lf;%lf;%lf;%lf;%lf\n", t, Sx, Sy, x0 + Sx, y0 + Sy);
+        t += 0.01;
     }
     double Sx = v0x * full_t;
     double Sy = v0y * full_t - g*pow(full_t, 2)/2;
-    fprintf(file, "%lf;%lf;%lf\n", Sx, Sy, full_t);
+    fprintf(file, "%lf;%lf;%lf;%lf;%lf\n", full_t, Sx, Sy, x0 + Sx, y0 + Sy);
 
     fclose(file);
     printf("Data successfully written to trajectory.txt\n");

@@ -51,7 +51,3 @@ my_turtle.goto(turtle_x + x0 + Sx, turtle_y + y0 + Sy)
 
 update()
 done()
-
-
-
-
