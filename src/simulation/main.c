@@ -137,6 +137,14 @@ void calculate_forces(RocketState *rocket, double *Fx, double *Fy, double y0) {
         *Fy += rocket->thrust * sin(rocket->angle);
     }
 
+    double N = -(*Fy);
+    if (rocket->y <= y0 + 0.001) {
+        if (N > 0.0) {
+            *Fy += N;
+            *Fx = 0.0;
+        }
+    }
+
 }
 
 void update_velocity(RocketState *rocket, double *Fx, double *Fy) {
