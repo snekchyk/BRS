@@ -7,7 +7,7 @@ y = []
 t = []
 
 try:
-    with open("src/simulation/trajectory.txt", "r") as file:
+    with open("../simulation/trajectory.txt", "r") as file:
         for line in file:
             line = line.strip().split(";")
             if len(line) > 4:
