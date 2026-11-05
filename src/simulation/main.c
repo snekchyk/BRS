@@ -11,7 +11,7 @@ typedef struct {
     double x, y;
     double vx, vy;
     double t;
-
+    
     double angle;
     double dry_mass;
     double thrust;
@@ -21,6 +21,7 @@ typedef struct {
     double fuel;
 } RocketState;
 
+int validation(RocketState *rocket);
 void calculate_forces(RocketState *rocket, double *Fx, double *Fy, double y0);
 void update_velocity(RocketState *rocket, double *Fx, double *Fy);
 void update_position(RocketState *rocket);
@@ -82,7 +83,6 @@ int main() {
     rocket.vy = 0.0;
     rocket.t = 0.00;
 
-
     rocket.angle = angle;
     rocket.dry_mass = dry_mass;
     rocket.thrust = thrust;
@@ -91,6 +91,11 @@ int main() {
     m = dry_mass + fuel;
     rocket.m = m;
     rocket.fuel = fuel;
+
+    if (validation(&rocket) != 0) {
+        printf("Simulation aborted due to invalid input.\n");
+        return 1;
+    }
 
     FILE *file = fopen("trajectory.txt", "w");
     if (file == NULL) {
@@ -124,6 +129,39 @@ int main() {
 
     fclose(file);
     printf("Data successfully written to trajectory.txt\n");
+}
+
+int validation(RocketState *rocket) {
+    if (rocket->dry_mass <= 0) {
+        printf("Error: Rocket dry mass can't be zero or negative.\n");
+        return 1;
+    }
+
+    if (rocket->thrust < 0) {
+        printf("Error: Rocket thrust can't be negative.\n");
+        return 1;
+    }
+
+    if (rocket->burn_rate < 0) {
+        printf("Error: Rocket burn rate can't be negative.\n");
+        return 1;
+    }
+
+    if (rocket->fuel < 0) {
+        printf("Error: Rocket fuel can't be negative.\n");
+        return 1;
+    }
+
+    if (rocket->thrust <= rocket->dry_mass * g) {
+        printf("Warning: Thrust is less than rocket weight. The rocket will never lift off.\n");
+        return 0;
+    } else if (rocket->thrust <= rocket->m * g) {
+        printf("Warning: Thrust is less than initial weight. The rocket will sit on the ground until enough fuel burns off to lift off.\n");
+        return 0;
+    }
+
+    return 0;
+
 }
 
 void calculate_forces(RocketState *rocket, double *Fx, double *Fy, double y0) {
