@@ -5,15 +5,31 @@ from matplotlib.animation import FuncAnimation
 x = []
 y = []
 t = []
+vx = []
+vy = []
+ax = []
+ay = []
+Ep = []
+Ek = []
+m = []
+fuel = []
 
 try:
     with open("../simulation/trajectory.txt", "r") as file:
         for line in file:
             line = line.strip().split(";")
-            if len(line) > 4:
+            if len(line) > 10:
                 t.append(float(line[0]))
-                x.append(float(line[3]))
-                y.append(float(line[4]))
+                x.append(float(line[1]))
+                y.append(float(line[2]))
+                vx.append(float(line[3]))
+                vy.append(float(line[4]))
+                ax.append(float(line[5]))
+                ay.append(float(line[6]))
+                Ep.append(float(line[7]))
+                Ek.append(float(line[8]))
+                m.append(float(line[9]))
+                fuel.append(float(line[10]))
 except Exception as e:
     print(f"Error, {e}")
 
@@ -31,7 +47,6 @@ else:
     animated_point, = axis.plot([], [], color="red", marker="o", label="Head", zorder=3)
 
     axis.grid(linestyle='dashed', color='#64748b')
-
 
     axis.set_facecolor("#0B132B")
 
@@ -53,7 +68,7 @@ else:
     telemetry_box = axis.text(
         0.01, 0.98, '', transform=axis.transAxes, fontsize=10,
         family='monospace', color='#f8fafc',
-        verticalalignment='top', horizontalalignment='left',  # Притискаємо до самого кутка
+        verticalalignment='top', horizontalalignment='left',
         bbox=dict(facecolor='#0f172a', alpha=0.9, edgecolor='#334155', boxstyle='round,pad=0.5')
     )
 
@@ -62,10 +77,22 @@ else:
         animated_point.set_data([x[frame]], [y[frame]])
 
         current_time = t[frame] if frame < len(t) else t[-1]
+        
+        speed = np.sqrt(vx[frame]**2 + vy[frame]**2)
+
         telemetry_box.set_text(
             f"TIME: {current_time:6.2f} s\n"
-            f"X:    {x[frame]:8.2f} m\n"
-            f"Y:    {y[frame]:8.2f} m"
+            f"X:          {x[frame]:8.2f} m\n"
+            f"Y:          {y[frame]:8.2f} m\n"
+            f"Velocity: {speed:8.2f} m/s\n"
+            f"VX:   {vx[frame]:8.2f} m/s\n"
+            f"VY:   {vy[frame]:8.2f} m/s\n"
+            f"AX:   {ax[frame]:8.2f} m/s²\n"
+            f"AY:   {ay[frame]:8.2f} m/s²\n"
+            f"Ep:   {Ep[frame]:8.0f} J\n"
+            f"Ek:   {Ek[frame]:8.0f} J\n"
+            f"M:    {m[frame]:8.2f} kg\n"
+            f"FUEL: {fuel[frame]:8.2f} kg"
         )
 
         return animated_plot, animated_point,
@@ -73,6 +100,5 @@ else:
     dt = int((t[1] - t[0]) * 1000)
 
     animation = FuncAnimation(fig=fig, func=update, frames=len(x), interval=dt)
-
 
 plt.show()

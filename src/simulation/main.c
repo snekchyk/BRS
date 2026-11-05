@@ -10,7 +10,10 @@
 typedef struct {
     double x, y;
     double vx, vy;
+    double v;
     double t;
+    double ax;
+    double ay;
     
     double angle;
     double dry_mass;
@@ -19,8 +22,13 @@ typedef struct {
 
     double m;
     double fuel;
+
+    //extra telemetry
+    double Ep;
+    double Ek;
 } RocketState;
 
+void update_telemetry(RocketState *rocket);
 int validation(RocketState *rocket);
 void calculate_forces(RocketState *rocket, double *Fx, double *Fy, double y0);
 void update_velocity(RocketState *rocket, double *Fx, double *Fy);
@@ -92,6 +100,9 @@ int main() {
     rocket.m = m;
     rocket.fuel = fuel;
 
+    rocket.Ep = 0.0;
+    rocket.Ek = 0.0;
+
     if (validation(&rocket) != 0) {
         printf("Simulation aborted due to invalid input.\n");
         return 1;
@@ -113,6 +124,8 @@ int main() {
 
         update_velocity(&rocket, &Fx, &Fy);
 
+        update_telemetry(&rocket);
+
         update_position(&rocket);
 
         if (rocket.fuel > 0.0) {
@@ -123,7 +136,17 @@ int main() {
 
         rocket.t += dt;
 
-        fprintf(file, "%lf;None;None;%lf;%lf\n", rocket.t, rocket.x, rocket.y);
+        if (rocket.y < 0.0) {
+            double fraction = y_prev / (y_prev - rocket.y);
+            
+            rocket.x = x_prev + fraction * (rocket.x - x_prev);
+            rocket.y = 0.0;
+            
+            fprintf(file, "%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf%;lf;%lf\n", rocket.t, rocket.x, rocket.y, rocket.vx, rocket.vy, rocket.ax, rocket.ay, rocket.Ep, rocket.Ek, rocket.m, rocket.fuel);
+            break;
+        }
+
+        fprintf(file, "%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf\n", rocket.t, rocket.x, rocket.y, rocket.vx, rocket.vy, rocket.ax, rocket.ay, rocket.Ep, rocket.Ek, rocket.m, rocket.fuel);
     }
 
 
@@ -164,6 +187,14 @@ int validation(RocketState *rocket) {
 
 }
 
+void update_telemetry(RocketState *rocket) {
+    rocket->Ep = rocket->m * g * rocket->y;
+
+
+
+    rocket->Ek = (rocket->m * rocket->v * rocket->v)/2;
+}
+
 void calculate_forces(RocketState *rocket, double *Fx, double *Fy, double y0) {
     *Fx = 0.0;
     *Fy = 0.0;
@@ -190,8 +221,13 @@ void update_velocity(RocketState *rocket, double *Fx, double *Fy) {
     ax = *Fx/rocket->m;
     ay = *Fy/rocket->m;
 
+    rocket->ax = ax;
+    rocket->ay = ay;
+
     rocket->vx += ax*dt;
     rocket->vy += ay*dt;
+
+    rocket->v = sqrt(rocket->vx * rocket->vx + rocket->vy * rocket->vy);
 }
 
 void update_position(RocketState *rocket) {
