@@ -6,6 +6,9 @@
 #define dt 0.01
 #define pi 3.141592
 #define to_radians(deg) ((deg) * pi / 180.0)
+#define cd 0.4
+#define ro 1.225
+#define area 0.1
 
 typedef struct {
     double x, y;
@@ -29,6 +32,7 @@ typedef struct {
 } RocketState;
 
 void update_telemetry(RocketState *rocket);
+double calculate_air_density(double y);
 int validation(RocketState *rocket);
 void calculate_forces(RocketState *rocket, double *Fx, double *Fy, double y0);
 void update_velocity(RocketState *rocket, double *Fx, double *Fy);
@@ -142,7 +146,12 @@ int main() {
             rocket.x = x_prev + fraction * (rocket.x - x_prev);
             rocket.y = 0.0;
             
-            fprintf(file, "%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf%;lf;%lf\n", rocket.t, rocket.x, rocket.y, rocket.vx, rocket.vy, rocket.ax, rocket.ay, rocket.Ep, rocket.Ek, rocket.m, rocket.fuel);
+            fprintf(file, "%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf\n", rocket.t, rocket.x, rocket.y, rocket.vx, rocket.vy, rocket.ax, rocket.ay, rocket.Ep, rocket.Ek, rocket.m, rocket.fuel);
+            break;
+        }
+
+        if (rocket.fuel <= 0.0 && rocket.y <= 0.001 && rocket.t > 1.0) {
+            printf("Simulation stopped: Rocket ran out of fuel on the ground.\n");
             break;
         }
 
@@ -187,6 +196,14 @@ int validation(RocketState *rocket) {
 
 }
 
+double calculate_air_density(double y) {
+    if (y < 0) return ro;
+
+    double H = 8500.0;
+
+    return ro * exp(-y / H);
+}
+
 void update_telemetry(RocketState *rocket) {
     rocket->Ep = rocket->m * g * rocket->y;
 
@@ -204,6 +221,17 @@ void calculate_forces(RocketState *rocket, double *Fx, double *Fy, double y0) {
     if (rocket->fuel > 0.0) {
         *Fx += rocket->thrust * cos(rocket->angle);
         *Fy += rocket->thrust * sin(rocket->angle);
+    }
+
+    if (rocket->v > 0.1) {
+        double current_ro = calculate_air_density(rocket->y);
+
+        double F_drag = 0.5 * current_ro * cd * area * rocket->v * rocket->v;
+
+        double Fx_drag = -F_drag * (rocket->vx / rocket->v);
+        double Fy_drag = -F_drag * (rocket->vy / rocket->v);
+        *Fx += Fx_drag;
+        *Fy += Fy_drag;
     }
 
     double N = -(*Fy);
