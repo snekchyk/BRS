@@ -122,21 +122,21 @@ int main() {
         double x_prev = rocket.x;
         double y_prev = rocket.y;
 
+        if (rocket.fuel > rocket.burn_rate * dt) {
+            rocket.fuel -= rocket.burn_rate * dt;
+        } else {
+            rocket.fuel = 0.0; // Якщо палива менше, ніж треба на крок, воно просто згорає все
+        }
+        rocket.m = rocket.dry_mass + rocket.fuel;
+
         double Fx, Fy;
-
+        
         calculate_forces(&rocket, &Fx, &Fy, y0);
-
         update_velocity(&rocket, &Fx, &Fy);
-
-        update_telemetry(&rocket);
 
         update_position(&rocket);
 
-        if (rocket.fuel > 0.0) {
-            rocket.fuel -= rocket.burn_rate * dt;
-            if (rocket.fuel < 0.0) rocket.fuel = 0.0;
-            rocket.m = rocket.dry_mass + rocket.fuel;
-        }
+        update_telemetry(&rocket);
 
         rocket.t += dt;
 
