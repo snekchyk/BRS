@@ -31,6 +31,13 @@ typedef struct {
     double Ek;
 } RocketState;
 
+#ifdef _WIN32
+#define EXPORT __declspec(dllexport)
+#else
+#define EXPORT
+#endif
+
+
 void update_telemetry(RocketState *rocket);
 double calculate_air_density(double y);
 int validation(RocketState *rocket);
@@ -38,55 +45,11 @@ void calculate_forces(RocketState *rocket, double *Fx, double *Fy, double y0);
 void update_velocity(RocketState *rocket, double *Fx, double *Fy);
 void update_position(RocketState *rocket);
 
-int main() {
-        double x0, y0, vx, vy, angle, dry_mass, thrust, burn_rate, m, fuel, t;
-
-    printf("Enter 'x' initial position: ");
-    if(scanf("%lf", &x0) != 1) {
-        printf("Error reading data.\n");
-        return 1;
-    }
-
-    printf("Enter 'y' initial position: ");
-    if(scanf("%lf", &y0) != 1) {
-        printf("Error reading data.\n");
-        return 1;
-    }
-
-    printf("Enter angle: ");
-    if(scanf("%lf", &angle) != 1) {
-        printf("Error reading data.\n");
-        return 1;
-    }
-    angle = to_radians(angle);
-
-    printf("Enter dry mass: ");
-    if(scanf("%lf", &dry_mass) != 1) {
-        printf("Error reading data.\n");
-        return 1;
-    }
-
-    printf("Enter thrust: ");
-    if(scanf("%lf", &thrust) != 1) {
-        printf("Error reading data.\n");
-        return 1;
-    }
-
-    printf("Enter burn rate: ");
-    if(scanf("%lf", &burn_rate) != 1) {
-        printf("Error reading data.\n");
-        return 1;
-    }
-
-    printf("Enter fuel: ");
-    if(scanf("%lf", &fuel) != 1) {
-        printf("Error reading data.\n");
-        return 1;
-    }
-
-
+EXPORT int run_simulation(
+    double x0, double y0, double angle, double dry_mass, double thrust, double burn_rate, double fuel,
+    double** out_t, double** out_x, double** out_y, double** out_vx, double** out_vy, double** out_ax, double** out_ay, double** out_Ep, double** out_Ek, double** out_m, double** out_fuel
+) {
     RocketState rocket;
-
 
     rocket.x = x0;
     rocket.y = y0;
@@ -95,12 +58,13 @@ int main() {
     rocket.vy = 0.0;
     rocket.t = 0.00;
 
+    angle = to_radians(angle);
     rocket.angle = angle;
     rocket.dry_mass = dry_mass;
     rocket.thrust = thrust;
     rocket.burn_rate = burn_rate;
 
-    m = dry_mass + fuel;
+    double m = dry_mass + fuel;
     rocket.m = m;
     rocket.fuel = fuel;
 
@@ -109,14 +73,24 @@ int main() {
 
     if (validation(&rocket) != 0) {
         printf("Simulation aborted due to invalid input.\n");
-        return 1;
+        return -1;
     }
 
-    FILE *file = fopen("trajectory.txt", "w");
-    if (file == NULL) {
-        perror("Error opening file");
-        return 1;
-    }
+    int cap = 1000;
+    int i = 0;
+
+    *out_t = (double*)malloc(cap * sizeof(double));
+    *out_x = (double*)malloc(cap * sizeof(double));
+    *out_y = (double*)malloc(cap * sizeof(double));
+    *out_vx = (double*)malloc(cap * sizeof(double));
+    *out_vy = (double*)malloc(cap * sizeof(double));
+    *out_ax = (double*)malloc(cap * sizeof(double));
+    *out_ay = (double*)malloc(cap * sizeof(double));
+    *out_Ep = (double*)malloc(cap * sizeof(double));
+    *out_Ek = (double*)malloc(cap * sizeof(double));
+    *out_m = (double*)malloc(cap * sizeof(double));
+    *out_fuel = (double*)malloc(cap * sizeof(double));
+
 
     while (rocket.y >= 0.0) {
         double x_prev = rocket.x;
@@ -125,7 +99,7 @@ int main() {
         if (rocket.fuel > rocket.burn_rate * dt) {
             rocket.fuel -= rocket.burn_rate * dt;
         } else {
-            rocket.fuel = 0.0; // Якщо палива менше, ніж треба на крок, воно просто згорає все
+            rocket.fuel = 0.0;
         }
         rocket.m = rocket.dry_mass + rocket.fuel;
 
@@ -140,13 +114,39 @@ int main() {
 
         rocket.t += dt;
 
+        if (i >= cap) {
+            cap *= 2;
+            *out_t = (double*)realloc(*out_t, cap * sizeof(double));
+            *out_x = (double*)realloc(*out_x, cap * sizeof(double));
+            *out_y = (double*)realloc(*out_y, cap * sizeof(double));
+            *out_vx = (double*)realloc(*out_vx, cap * sizeof(double));
+            *out_vy = (double*)realloc(*out_vy, cap * sizeof(double));
+            *out_ax = (double*)realloc(*out_ax, cap * sizeof(double));
+            *out_ay = (double*)realloc(*out_ay, cap * sizeof(double));
+            *out_Ep = (double*)realloc(*out_Ep, cap * sizeof(double));
+            *out_Ek = (double*)realloc(*out_Ek, cap * sizeof(double));
+            *out_m = (double*)realloc(*out_m, cap * sizeof(double));
+            *out_fuel = (double*)realloc(*out_fuel, cap * sizeof(double));
+        }
+
         if (rocket.y < 0.0) {
             double fraction = y_prev / (y_prev - rocket.y);
             
             rocket.x = x_prev + fraction * (rocket.x - x_prev);
             rocket.y = 0.0;
-            
-            fprintf(file, "%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf\n", rocket.t, rocket.x, rocket.y, rocket.vx, rocket.vy, rocket.ax, rocket.ay, rocket.Ep, rocket.Ek, rocket.m, rocket.fuel);
+
+            (*out_t)[i] = rocket.t; 
+            (*out_x)[i] = rocket.x; 
+            (*out_y)[i] = rocket.y;
+            (*out_vx)[i] = rocket.vx; 
+            (*out_vy)[i] = rocket.vy;
+            (*out_ax)[i] = rocket.ax;
+            (*out_ay)[i] = rocket.ay;
+            (*out_Ep)[i] = rocket.Ep;
+            (*out_Ek)[i] = rocket.Ek;
+            (*out_m)[i] = rocket.m;
+            (*out_fuel)[i] = rocket.fuel;
+            i++;
             break;
         }
 
@@ -155,12 +155,15 @@ int main() {
             break;
         }
 
-        fprintf(file, "%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf;%lf\n", rocket.t, rocket.x, rocket.y, rocket.vx, rocket.vy, rocket.ax, rocket.ay, rocket.Ep, rocket.Ek, rocket.m, rocket.fuel);
+        (*out_t)[i] = rocket.t; (*out_x)[i] = rocket.x; (*out_y)[i] = rocket.y;
+        (*out_vx)[i] = rocket.vx; (*out_vy)[i] = rocket.vy;
+        (*out_ax)[i] = rocket.ax; (*out_ay)[i] = rocket.ay;
+        (*out_Ep)[i] = rocket.Ep; (*out_Ek)[i] = rocket.Ek;
+        (*out_m)[i] = rocket.m; (*out_fuel)[i] = rocket.fuel;
+        i++;
     }
 
-
-    fclose(file);
-    printf("Data successfully written to trajectory.txt\n");
+    return i;
 }
 
 int validation(RocketState *rocket) {
@@ -261,4 +264,10 @@ void update_velocity(RocketState *rocket, double *Fx, double *Fy) {
 void update_position(RocketState *rocket) {
     rocket->x += rocket->vx * dt;
     rocket->y += rocket->vy * dt;
+}
+
+EXPORT void free_memory(double* ptr) {
+    if (ptr != NULL) {
+        free(ptr);
+    }
 }
