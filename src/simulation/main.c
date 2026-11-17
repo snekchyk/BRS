@@ -56,6 +56,9 @@ EXPORT int run_simulation(
 
     rocket.vx = 0.0;
     rocket.vy = 0.0;
+    rocket.v = 0.0;
+    rocket.ax = 0.0;
+    rocket.ay = 0.0;
     rocket.t = 0.00;
 
     angle = to_radians(angle);
